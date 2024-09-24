@@ -15,7 +15,7 @@ public:
 		bus = std::make_unique<Bus>(p);
 	}
     void setFlag(FLAG flag,bool isUsed = false);
-	           uint8_t getFlag(FLAG flag) const;
+	uint8_t getFlag(FLAG flag) const;
 
 public:
 
@@ -30,7 +30,8 @@ public:
 		uint8_t(*admode)(void)    = NULL;
 		uint8_t               cycles = 0;
 	}; 
-
+	uint8_t addres_abs = 0x0000;
+	uint8_t addres_rel = 0x00;
 private:
 	//adressing mods
 	uint8_t IMP();	
