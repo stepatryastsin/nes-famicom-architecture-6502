@@ -1,163 +1,202 @@
-#pragma warning(disable : 4996)
-#include<stdio.h>
-#include<stdlib.h>
-
 //////////////////////////////////////////
 /*
   Simple Virtual Machine to learn basic VM functions,
   prior to implementing a full-fledged 6502 (NES) architecture VM.
 */
 
-#define MAX_STACK_SIZE 1024    // Maximum stack size
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
 
-// Error messages
-#define STACK_OVERFLOW_ERROR "Error: Stack overflow."
-#define STACK_UNDERFLOW_ERROR "Error: Stack underflow."
+#define MAX_STACK_SIZE 1024  // Maximum size of the stack
+#define BINARY_OP(VM, op)  { int a = pop(VM); int b = pop(VM); push(VM, b op a); }
 
-// Stack and its size
-int stack[MAX_STACK_SIZE];
-int stack_size = 0;
+// Enumeration for the instruction set
+typedef enum {
+    INST_PUSH,
+    INST_POP,
+    INST_DUP,
+    INST_SWAP,
+    INST_ADD,
+    INST_SUB,
+    INST_MUL,
+    INST_DIV,
+    INST_PRINT,
+} InstructionType;
 
-// VM instruction set
-enum Instruction {
-    INSTR_ADD,     // Perform addition
-    INSTR_SUB,     // Perform subtraction
-    INSTR_MUL,     // Perform multiplication
-    INSTR_DIV,     // Perform division
-    INSTR_MOD,     // Perform modulus operation
-    INSTR_PUSH,    // Push a value onto the stack
-    INSTR_POP,     // Pop a value off the stack
-    INSTR_PRINT,   // Print the top value on the stack
-    INSTR_DUP,     // Duplicate the top value on the stack
-    INSTR_SWAP     // Swap the top two values
+// Structure to represent an instruction
+typedef struct {
+    InstructionType type;
+    int value;  // Value (only relevant for push instruction)
+} Instruction;
+
+// Structure to represent the virtual machine
+typedef struct {
+    int stack[MAX_STACK_SIZE];   // Stack to store values
+    int stack_size;              // Current size of the stack
+    size_t program_size;         // Number of instructions in the program
+    Instruction* instructions;   // Array of instructions (the program)
+} VirtualMachine;
+
+// Macros to define different instructions
+#define DEF_INST_PUSH(value) {.type = INST_PUSH, .value = value}
+#define DEF_INST_POP()       {.type = INST_POP}
+#define DEF_INST_DUP()       {.type = INST_DUP}
+#define DEF_INST_SWAP()      {.type = INST_SWAP}
+#define DEF_INST_ADD()       {.type = INST_ADD}
+#define DEF_INST_SUB()       {.type = INST_SUB}
+#define DEF_INST_MUL()       {.type = INST_MUL}
+#define DEF_INST_DIV()       {.type = INST_DIV}
+#define DEF_INST_PRINT()     {.type = INST_PRINT}
+
+// Program to be executed by the virtual machine
+Instruction program[] = {
+   {.type = INST_PUSH, .value = 13},
+   {.type = INST_PUSH, .value = 14},
+   { .type = INST_MUL },
+   { .type = INST_PRINT }
 };
+#define PROGRAM_SIZE (sizeof(program) / sizeof(program[0]))
 
-// Structure to define an instruction
-struct Instr_s {
-    enum Instruction type;    // Instruction type
-    int value;                // Operand (if applicable)
-};
+// Function to push a value onto the stack
+void push(VirtualMachine* vm, int value) {
+    if (vm->stack_size >= MAX_STACK_SIZE) {
+        fprintf(stderr, "ERROR: Stack Overflow\n");
+        exit(1);
+    }
+    vm->stack[vm->stack_size++] = value;
+}
 
-// Macros for binary operations (pop two values, apply operation, push result)
-#define BINARY_OP(op)  { int a = pop(); int b = pop(); push(b op a); }
+// Function to pop a value from the stack
+int pop(VirtualMachine* vm) {
+    if (vm->stack_size <= 0) {
+        fprintf(stderr, "ERROR: Stack Underflow\n");
+        exit(1);
+    }
+    return vm->stack[--vm->stack_size];
+}
 
-// Instruction set for the VM program
-struct Instr_s program[] = {
-    {.type = INSTR_PUSH, .value = 13},   // Push 13 onto the stack
-    {.type = INSTR_PUSH, .value = 15},   // Push 15 onto the stack
-    {.type = INSTR_MUL},                 // Multiply top two values
-    {.type = INSTR_PRINT},               // Print the result
-    {.type = INSTR_PUSH, .value = 7},    // Push 7 onto the stack
-    {.type = INSTR_ADD},                 // Add top two values
-    {.type = INSTR_PRINT},               // Print the result
-    {.type = INSTR_DUP},                 // Duplicate the top value
-    {.type = INSTR_PRINT},               // Print duplicated value
-    {.type = INSTR_SWAP},                // Swap the top two values
-    {.type = INSTR_PRINT}                // Print the swapped top value
-};
+// Function to print the current stack
+void print_stack(VirtualMachine* vm) {
+    for (int i = vm->stack_size - 1; i >= 0; i--) {
+        printf("%d\n", vm->stack[i]);
+    }
+}
 
-// Function prototypes
-int pop();
-void push(int a);
-void writebinary(const char* file);
-struct Instr_s* readbinary(const char* file);
+// Function to write the program to a binary file
+void write_program_to_file(VirtualMachine* vm, const char* file_path) {
+    FILE* file = fopen(file_path, "wb");
+    if (file == NULL) {
+        fprintf(stderr, "ERROR: Could not open file for writing: %s\n", file_path);
+        exit(1);
+    }
+    fwrite(vm->instructions, sizeof(vm->instructions[0]), PROGRAM_SIZE, file);
+    fclose(file);
+}
 
-// Main VM loop
+// Function to read the program from a binary file
+VirtualMachine* read_program_from_file(VirtualMachine* vm, const char* file_path) {
+    FILE* file = fopen(file_path, "rb");
+    if (file == NULL) {
+        fprintf(stderr, "ERROR: Could not open file for reading: %s\n", file_path);
+        exit(1);
+    }
+
+    // Allocate memory for instructions
+    Instruction* instructions = malloc(sizeof(Instruction) * MAX_STACK_SIZE);
+    if (instructions == NULL) {
+        fprintf(stderr, "ERROR: Memory allocation failed for instructions\n");
+        exit(1);
+    }
+
+    // Determine file size
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    // Read instructions from file
+    fread(instructions, sizeof(Instruction), file_size / sizeof(Instruction), file);
+    vm->program_size = file_size / sizeof(Instruction);
+    vm->instructions = instructions;
+
+    fclose(file);
+    return vm;
+}
+
+// Main function to run the virtual machine
 int main() {
-    writebinary("test.vm");  // Write the program to a binary file
+    // Initialize the virtual machine
+    VirtualMachine* vm = malloc(sizeof(VirtualMachine));
+    if (vm == NULL) {
+        fprintf(stderr, "ERROR: Memory allocation failed for virtual machine\n");
+        exit(1);
+    }
 
-    struct Instr_s* programs = readbinary("test.vm");  // Read the program back from the file
+    vm->instructions = program;
+    vm->stack_size = 0;
 
-    // Execute each instruction in the read program
-    for (int i = 0; i < sizeof(program) / sizeof(program[0]); i++) {
-        switch (programs[i].type) {
-        case INSTR_PUSH:
-            push(programs[i].value);    // Push the value onto the stack
+    // Write the program to a binary file
+    write_program_to_file(vm, "program.bin");
+
+    // Read the program back from the binary file
+    vm = read_program_from_file(vm, "program.bin");
+
+    // Execute the instructions in the program
+    for (size_t instruction_pointer = 0; instruction_pointer < vm->program_size; instruction_pointer++) {
+        Instruction current_instruction = vm->instructions[instruction_pointer];
+
+        switch (current_instruction.type) {
+        case INST_PUSH:
+            push(vm, current_instruction.value);
             break;
-        case INSTR_PRINT:
-            printf("%d\n", pop());      // Print the top value of the stack
+        case INST_POP:
+            pop(vm);
             break;
-        case INSTR_POP:
-            pop();                      // Pop the top value off the stack
-            break;
-        case INSTR_ADD:
-            BINARY_OP(+);               // Pop two values, add, push result
-            break;
-        case INSTR_SUB:
-            BINARY_OP(-);               // Pop two values, subtract, push result
-            break;
-        case INSTR_MUL:
-            BINARY_OP(*);               // Pop two values, multiply, push result
-            break;
-        case INSTR_DIV:
-            BINARY_OP(/ );               // Pop two values, divide, push result
-            break;
-        case INSTR_MOD:
-            BINARY_OP(%);               // Pop two values, mod, push result
-            break;
-        case INSTR_DUP: {
-            int top = pop();            // Duplicate the top value
-            push(top);
-            push(top);
+        case INST_DUP: {
+            int value = pop(vm);
+            push(vm, value);
+            push(vm, value);
             break;
         }
-        case INSTR_SWAP: {
-            int a = pop();              // Swap the top two values
-            int b = pop();
-            push(a);
-            push(b);
+        case INST_SWAP: {
+            int first_operand = pop(vm);
+            int second_operand = pop(vm);
+            push(vm, first_operand);
+            push(vm, second_operand);
             break;
         }
+        case INST_ADD:
+            BINARY_OP(vm, +);
+            break;
+        case INST_SUB:
+            BINARY_OP(vm, -);
+            break;
+        case INST_MUL:
+            BINARY_OP(vm, *);
+            break;
+        case INST_DIV: {
+            int a = pop(vm);
+            int b = pop(vm);
+            if (a == 0) {
+                fprintf(stderr, "ERROR: Division by zero\n");
+                exit(1);
+            }
+            push(vm, b / a);
+            break;
+        }
+        case INST_PRINT:
+            printf("Top of stack: %d\n", pop(vm));
+            break;
+        default:
+            fprintf(stderr, "ERROR: Unknown instruction\n");
+            exit(1);
         }
     }
 
-    free(programs);  // Free the allocated memory for programs
-}
+    // Clean up
+    free(vm->instructions);
+    free(vm);
 
-// Pops a value off the stack
-int pop() {
-    if (stack_size < 0) {
-        fprintf(stderr, STACK_UNDERFLOW_ERROR);
-        exit(1);
-    }
-    return stack[--stack_size];
-}
-
-// Pushes a value onto the stack
-void push(int a) {
-    if (stack_size >= MAX_STACK_SIZE) {
-        fprintf(stderr, STACK_OVERFLOW_ERROR);
-        exit(1);
-    }
-    stack[stack_size++] = a;
-}
-
-// Writes the program to a binary file
-void writebinary(const char* file) {
-    FILE* fptr = fopen(file, "wb");
-    if (fptr == NULL) {
-        fprintf(stderr, "Error: Could not open file for writing.\n");
-        exit(1);
-    }
-    fwrite(program, sizeof(struct Instr_s), sizeof(program) / sizeof(program[0]), fptr);
-    fclose(fptr);
-}
-
-// Reads the program from a binary file
-struct Instr_s* readbinary(const char* file) {
-    FILE* fptr = fopen(file, "rb");
-    if (fptr == NULL) {
-        fprintf(stderr, "Error: Could not open file for reading.\n");
-        exit(1);
-    }
-    // Find file size to allocate the correct amount of memory
-    fseek(fptr, 0, SEEK_END);
-    long fsize = ftell(fptr);
-    fseek(fptr, 0, SEEK_SET);
-
-    struct Instr_s* inst = malloc(fsize);
-    fread(inst, fsize, 1, fptr);
-    fclose(fptr);
-
-    return inst;
+    return 0;
 }
