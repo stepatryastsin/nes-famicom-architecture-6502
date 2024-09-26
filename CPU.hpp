@@ -46,12 +46,12 @@ private:
 
 
     // Write and read byte
-    uint8_t rbyte(uint8_t& cycles,uint8_t addres);
-    void wbyte(uint8_t& cycles, uint16_t byte, uint8_t addres);
+    uint8_t rbyte(uint8_t& cycles, uint16_t address);
+    void wbyte(uint8_t& cycles, uint8_t value, uint16_t address);
 
     //Write and read two byte
-    uint16_t r2byte(uint8_t& cycles, uint8_t addres);
-    void w2byte(uint8_t& cycles,uint16_t byte2, uint8_t addres);
+    uint16_t r2byte(uint8_t& cycles, uint16_t address);
+    void w2byte(uint8_t& cycles, uint16_t word, uint16_t address);
 };
 
 #endif // CPU_H
