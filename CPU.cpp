@@ -47,6 +47,7 @@ void CPU::ExecuteInstruction(uint8_t opcode, uint8_t& cycles) {
         LoadRegisterStatus(r);
     };
     switch (opcode) {
+///////////////////////////////////LDA/////////////////////////////////////////////
     case LDA_IMIDEATE: {
         A = FetchByte(cycles);
         LoadRegisterStatus(A);
@@ -78,16 +79,83 @@ void CPU::ExecuteInstruction(uint8_t opcode, uint8_t& cycles) {
         break;
     }
     case LDA_INDIRECT_OFFSET_X: {
-        uint16_t address = AddrIndirectX(cycles);
-        LoadCurrentRegister(address, A);
+        uint16_t Address = Get2Byte(cycles, FetchByte(cycles));
+        uint16_t AdressX = Address + X;
+        cycles--;
+        A = GetByte(cycles, AdressX);
+        LoadRegisterStatus(A);
         break;
     }
     case LDA_INDIRECT_OFFSET_Y: {
-        uint16_t Eaddress = AddrIndirectY(cycles);
-        LoadCurrentRegister(Eaddress, A);
+        uint16_t Address = Get2Byte(cycles, FetchByte(cycles));
+        uint16_t AdressY = Address + X;
+        cycles = ValidateMemoryPageBoundaries(Address, AdressY) ? cycles-- : cycles;
+        cycles--;
+        A = GetByte(cycles, AdressY);
+        LoadRegisterStatus(A);
+        break;
+    }
+//////////////////////////////////LDA/////////////////////////////////////////////////
+
+//////////////////////////////////LDX/////////////////////////////////////////////////
+    case LDX_IMIDEATE: {
+        X = FetchByte(cycles);
+        LoadRegisterStatus(X);
+        break;
+    }
+    case LDX_ZERO_PAGE: {
+        uint16_t address = AddrZeroPage(cycles);
+        LoadCurrentRegister(address, X);
+        break;
+    }
+    case LDX_ABSOLUTE: {
+        uint16_t address = AddrAbsolute(cycles);
+        LoadCurrentRegister(address,X);
+        break;
+    }
+    case LDX_ZERO_PAGE_OFFSET_Y: {
+        uint8_t address = AddrZeroPageY(cycles);
+        LoadCurrentRegister(address, X);
+        break;
+    }
+    case LDX_ABSOLUTE_OFFSET_Y: {
+        uint16_t address = AddrAbsoluteY(cycles);
+        LoadCurrentRegister(address, A);
         break;
     }
 
+//////////////////////////////////LDX/////////////////////////////////////////////////
+
+//////////////////////////////////LDY/////////////////////////////////////////////////
+    case LDY_IMIDEATE: {
+        X = FetchByte(cycles);
+        LoadRegisterStatus(X);
+        break;
+    }
+    case LDY_ZERO_PAGE: {
+        uint16_t address = AddrZeroPage(cycles);
+        LoadCurrentRegister(address, X);
+        break;
+    }
+    case LDY_ZERO_PAGE_OFFSET_X: {
+        uint8_t address = AddrZeroPageX(cycles);
+        LoadCurrentRegister(address, Y);
+        break;
+    }
+    case LDY_ABSOLUTE: {
+        uint16_t address = AddrAbsolute(cycles);
+        LoadCurrentRegister(address, Y);
+        break;
+    }
+
+    case LDY_ABSOLUTE_OFFSET_X: {
+        uint16_t address = AddrAbsoluteX(cycles);
+        LoadCurrentRegister(address, Y);
+        break;
+    }
+
+//////////////////////////////////LDY/////////////////////////////////////////////////
+   
     case JSR_ABSOLUTE: {
         uint16_t targetAddress = FetchWord(cycles);
         Set2Byte(cycles, PC - 1, 0x0100 + SP);
@@ -161,19 +229,12 @@ uint16_t CPU::AddrAbsoluteY(uint8_t& Cycles)
 //Indirect address with added X offset
 uint16_t CPU::AddrIndirectX(uint8_t& Cycles)
 {
-    uint16_t Address = Get2Byte(Cycles, FetchByte(Cycles));
-    uint16_t AdressX = Address + X;
-    Cycles--;
-    return AdressX;
+
 }
 //Indirect address with added Y offset
 uint16_t CPU::AddrIndirectY(uint8_t& Cycles)
 {
-    uint16_t Address = Get2Byte(Cycles, FetchByte(Cycles));
-    uint16_t AdressY = Address + Y;
-    Cycles = ValidateMemoryPageBoundaries(Address, AdressY) ? Cycles-- : Cycles;
-    Cycles--;
-    return AdressY;
+
 }
 
 void CPU::SetZeroFlag(uint8_t value) {
