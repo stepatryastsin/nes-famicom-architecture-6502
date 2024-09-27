@@ -26,6 +26,7 @@ public:
         bool N = false;  // Negative
     } flags;
 
+public:
 
     void ConnectRAM(std::shared_ptr<RAM> ramPtr);
 
@@ -47,6 +48,9 @@ private:
 
     void SetNegativeFlag(uint8_t value);
 
+
+private:
+
     // Write and read byte
     uint8_t GetByte(uint8_t& cycles, uint16_t address);
 
@@ -56,7 +60,6 @@ private:
     uint16_t Get2Byte(uint8_t& cycles, uint16_t address);
 
     void Set2Byte(uint8_t& cycles, uint16_t word, uint16_t address);
-
 
 private:
 
@@ -80,11 +83,6 @@ private:
     /** Absolute with Y offset */
     uint16_t AddrAbsoluteY(uint8_t& Cycles);
 
-    /**  Absolute with X offset */
-    uint16_t AddrIndirectX(uint8_t& Cycles);
-
-    /**  Absolute with Y offset */
-    uint16_t AddrIndirectY(uint8_t& Cycles);
 
    bool ValidateMemoryPageBoundaries(uint16_t& Faddress, uint16_t& Saddress);
 

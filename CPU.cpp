@@ -1,5 +1,20 @@
 #include "CPU.hpp"
 
+/////////////////////////////////////////////////////////////////////////////
+//                                                                         //
+//    Copyright (c) 2024 Stepa Tryastsin                                   //
+//                                                                         //
+//    Follow along on GitHub:  https://github.com/stepatryastsin           //
+//    The source code in this project is licensed under the MIT license.   //
+//                                                                         //
+//    Description:                                                         //
+//    A study project to dive into the topic of emulating processors,      //
+//    architectures, and graphical mapping through the NES.                //
+//                                                                         //
+/////////////////////////////////////////////////////////////////////////////
+
+
+
 ////////////////////////////////////////////////////////
 //                                                    //
 //                       Public                       //
@@ -39,6 +54,7 @@ void CPU::StepByInstruction(uint8_t cycles) {
 //                     Private                        //
 //                                                    //
 ////////////////////////////////////////////////////////
+
 
 //Interprets and executes the opcode instruction. Lambda function is used to load data into registers
 void CPU::ExecuteInstruction(uint8_t opcode, uint8_t& cycles) {
@@ -155,7 +171,86 @@ void CPU::ExecuteInstruction(uint8_t opcode, uint8_t& cycles) {
     }
 
 //////////////////////////////////LDY/////////////////////////////////////////////////
-   
+
+//////////////////////////////////STA/////////////////////////////////////////////////
+
+    case STA_ABSOLUTE:{
+        uint16_t address = AddrAbsolute(cycles);
+        SetByte(cycles, A,address);
+        break;
+    }
+    case STA_ABSOLUTE_OFFSET_X: {
+        uint16_t address = AddrAbsoluteX(cycles);
+        SetByte(cycles, A, address);
+        break;
+    }
+    case STA_ABSOLUTE_OFFSET_Y: {
+        uint16_t address = AddrAbsoluteY(cycles);
+        SetByte(cycles, A, address);
+        break;
+    }
+    case STA_ZERO_PAGE: {
+        uint16_t address = AddrZeroPage(cycles);
+        SetByte(cycles, A, address);
+        break;
+    }
+    case STA_ZERO_PAGE_OFFSET_X: {
+        uint16_t address = AddrZeroPageX(cycles);
+        SetByte(cycles, A, address);
+        break;
+    }
+    case STA_INDIRECT_OFFSET_X: {
+        //need test 
+        uint16_t address = AddrAbsoluteX(cycles);
+        Set2Byte(cycles, A, address);
+        cycles--;
+        break;
+    }
+    case STA_INDIRECT_OFFSET_Y: {
+        //need test 
+        uint16_t address = AddrAbsoluteY(cycles);
+        Set2Byte(cycles, A, address);
+        cycles--;
+        break;
+    }
+//////////////////////////////////STA/////////////////////////////////////////////////
+
+//////////////////////////////////STX/////////////////////////////////////////////////
+    case STX_ABSOLUTE: {
+        uint16_t address = AddrAbsolute(cycles);
+        SetByte(cycles, X, address);
+        break;
+    }
+    case STX_ZERO_PAGE: {
+        uint16_t address = AddrZeroPage(cycles);
+        SetByte(cycles, X, address);
+        break;
+    }
+    case STX_ZERO_PAGE_OFFSET_Y: {
+        uint16_t address = AddrZeroPageY(cycles);
+        SetByte(cycles, X, address);
+        break;
+    }
+//////////////////////////////////STX/////////////////////////////////////////////////
+
+//////////////////////////////////STX/////////////////////////////////////////////////
+    case STY_ABSOLUTE: {
+        uint16_t address = AddrAbsolute(cycles);
+        SetByte(cycles, Y, address);
+        break;
+    }
+    case STY_ZERO_PAGE: {
+        uint16_t address = AddrZeroPage(cycles);
+        SetByte(cycles, Y, address);
+        break;
+    }
+    case STY_ZERO_PAGE_OFFSET_X: {
+        uint16_t address = AddrZeroPageX(cycles);
+        SetByte(cycles, Y, address);
+        break;
+    }
+//////////////////////////////////STX/////////////////////////////////////////////////
+
     case JSR_ABSOLUTE: {
         uint16_t targetAddress = FetchWord(cycles);
         Set2Byte(cycles, PC - 1, 0x0100 + SP);
@@ -225,16 +320,6 @@ uint16_t CPU::AddrAbsoluteY(uint8_t& Cycles)
     uint16_t AdressX = Address + Y;
     Cycles = ValidateMemoryPageBoundaries(Address, AdressX) ? Cycles-- : Cycles;
     return AdressX;
-}
-//Indirect address with added X offset
-uint16_t CPU::AddrIndirectX(uint8_t& Cycles)
-{
-
-}
-//Indirect address with added Y offset
-uint16_t CPU::AddrIndirectY(uint8_t& Cycles)
-{
-
 }
 
 void CPU::SetZeroFlag(uint8_t value) {
@@ -308,7 +393,6 @@ uint16_t CPU::FetchWord(uint8_t& cycles) {
     cycles -= 2;
     return word;
 }
-
 
 bool CPU::ValidateMemoryPageBoundaries(uint16_t& Faddress, uint16_t& Saddress)
 {
