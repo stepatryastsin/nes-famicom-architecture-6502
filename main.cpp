@@ -7,11 +7,8 @@ int main(int argc, char* argv[]) {
 
     auto ram = std::make_shared<RAM>();
     auto cpu = std::make_shared<CPU>();
-
-  
-    cpu->connectRAM(ram);
-
-    cpu->reset();
+    cpu->ConnectRAM(ram);
+    cpu->ResetCPU();
     cpu->X = 0x02;  
 
     (*ram)[0xFFFC] = JSR_ABSOLUTE;  
@@ -23,7 +20,7 @@ int main(int argc, char* argv[]) {
 
     (*ram)[0x0003] = 0x99;         
 
-    cpu->step(9); 
+    cpu->StepByInstruction(9); 
 
     if (cpu->A == 0x99) {
         std::cout << "LDA_OFFSET_X  A: " << static_cast<int>(cpu->A) << std::endl;

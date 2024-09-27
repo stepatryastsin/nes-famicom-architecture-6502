@@ -2,26 +2,23 @@
 #include "CPU.hpp"
 
 RAM::RAM() {
-    init();
+    Init();
 }
 
-void RAM::init() {
-    mem.resize(MEM_SIZE);
-    for (size_t i = 0; i < MEM_SIZE; i++)
-    {
-        mem[i] = 0x00;
-    }
+void RAM::Init() {
+    memory.resize(MEM_SIZE);
+    std::fill(memory.begin(), memory.end(), 0x00);
 }
-
+//get
 uint16_t RAM::operator[](uint16_t address) const {
-    return mem[address];
+    return memory[address];
 }
 
-
+//set
 uint16_t& RAM::operator[](uint16_t address) {
-    return mem[address];
+    return memory[address];
 }
 
-void RAM::connectCPU(std::shared_ptr<CPU> cpuPtr) {
+void RAM::ConnectCPU(std::shared_ptr<CPU> cpuPtr) {
     cpu = std::move(cpuPtr); 
 }

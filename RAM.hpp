@@ -9,9 +9,9 @@
 class CPU;  // Forward declaration
 class RAM {
 public:
-    std::vector<uint16_t> mem;
+    std::vector<uint16_t> memory;
     RAM();
-    void init();
+    void Init();
 
 
     uint16_t operator[](uint16_t address) const;
@@ -20,8 +20,7 @@ public:
 
 private:
     std::shared_ptr<CPU> cpu; 
-    void connectCPU(std::shared_ptr<CPU> cpuPtr); 
-
+    void ConnectCPU(std::shared_ptr<CPU> cpuPtr); 
     friend class CPU;  
 };
 

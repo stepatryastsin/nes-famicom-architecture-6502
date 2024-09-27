@@ -26,32 +26,32 @@ public:
         bool N = false;  // Negative
     } flags;
 
-  
-    void connectRAM(std::shared_ptr<RAM> ramPtr);
+
+    void ConnectRAM(std::shared_ptr<RAM> ramPtr);
 
   
-    void reset();
+    void ResetCPU();
 
-    void step(uint8_t cycles);
+    void StepByInstruction(uint8_t cycles) ;
 
 private:
-    std::shared_ptr<RAM> ram;
+    std::shared_ptr<RAM> _ram;
 
-    uint8_t fetchByte(uint8_t& cycles);
-    uint16_t fetchWord(uint8_t& cycles);
-    void executeInstruction(uint8_t opcode, uint8_t& cycles);
+    uint8_t FetchByte(uint8_t& cycles);
+    uint16_t FetchWord(uint8_t& cycles);
+    void ExecuteInstruction(uint8_t opcode, uint8_t& cycles);
 
-    void setZeroFlag(uint8_t value);
-    void setNegativeFlag(uint8_t value);
+    void SetZeroFlag(uint8_t value);
+    void SetNegativeFlag(uint8_t value);
 
 
     // Write and read byte
-    uint8_t rbyte(uint8_t& cycles, uint16_t address);
-    void wbyte(uint8_t& cycles, uint8_t value, uint16_t address);
+    uint8_t GetByte(uint8_t& cycles, uint16_t address);
+    void SetByte(uint8_t& cycles, uint8_t value, uint16_t address);
 
     //Write and read two byte
-    uint16_t r2byte(uint8_t& cycles, uint16_t address);
-    void w2byte(uint8_t& cycles, uint16_t word, uint16_t address);
+    uint16_t Get2Byte(uint8_t& cycles, uint16_t address);
+    void Set2Byte(uint8_t& cycles, uint16_t word, uint16_t address);
 };
 
 #endif // CPU_H
