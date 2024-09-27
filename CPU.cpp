@@ -1,8 +1,20 @@
 #include "CPU.hpp"
 
+////////////////////////////////////////////////////////
+//                                                    //
+//                       Public                       //
+//                                                    //
+////////////////////////////////////////////////////////
+
+//Attaches RAM (RAM) to the processor (CPU).
+
 void CPU::ConnectRAM(std::shared_ptr<RAM> ramPtr) {
-    _ram = ramPtr;
+    _ram = std::move(ramPtr);
+    if (!_ram) {
+        throw std::runtime_error("RAM not connected!");
+    }
 }
+// Resets the processor, setting the register and stack pointer values to defaults.
 
 void CPU::ResetCPU() {
     PC = 0xFFFC;
@@ -10,109 +22,69 @@ void CPU::ResetCPU() {
     A = X = Y = 0;
     flags = {};
 }
-
+// Executes an instruction by receiving an operation code and executing the corresponding function.
 void CPU::StepByInstruction(uint8_t cycles) {
-    while (cycles > 0) {
-        uint8_t opcode = FetchByte(cycles);
-        ExecuteInstruction(opcode, cycles);
+    if (cycles < 0) {
+        throw std::runtime_error("The cycles are too short !");
     }
+    while (cycles > 0){
+      uint8_t opcode = FetchByte(cycles);
+      ExecuteInstruction(opcode, cycles);
+    } 
+   
 }
 
-uint8_t CPU::FetchByte(uint8_t& cycles) {
-    if (!_ram) {
-        throw std::runtime_error("RAM not connected!");
-    }
-    uint8_t byte = (*_ram)[PC];
-    PC++;
-    cycles--;
-    return byte;
-}
+////////////////////////////////////////////////////////
+//                                                    //
+//                     Private                        //
+//                                                    //
+////////////////////////////////////////////////////////
 
-uint16_t CPU::FetchWord(uint8_t& cycles) {
-    if (!_ram) {
-        throw std::runtime_error("RAM not connected!");
-    }
-
-    uint16_t word = (*_ram)[PC];
-    word |= ((*_ram)[PC] << 8);
-    PC += 2;
-    cycles -= 2; 
-    return word;
-}
-
+//Interprets and executes the opcode instruction. Lambda function is used to load data into registers
 void CPU::ExecuteInstruction(uint8_t opcode, uint8_t& cycles) {
+    auto LoadCurrentRegister = [&](uint16_t address, uint8_t& r) {
+        r = GetByte(cycles, address);
+        LoadRegisterStatus(r);
+    };
     switch (opcode) {
-
     case LDA_IMIDEATE: {
-        uint8_t value = FetchByte(cycles);
-        A = value;
-        SetZeroFlag(A);
-        SetNegativeFlag(A);
+        A = FetchByte(cycles);
+        LoadRegisterStatus(A);
         break;
     }
     case LDA_ZERO_PAGE: {
-        uint8_t address = FetchByte(cycles);
-        A = GetByte(cycles, address);
-        SetZeroFlag(A);
-        SetNegativeFlag(A);
+        uint16_t address = AddrZeroPage(cycles);
+        LoadCurrentRegister(address,A);
         break;
     }
-    case LDA_OFFSET_X: {
-        uint8_t address = FetchByte(cycles) + X;
-        A = GetByte(cycles, address);
-        SetZeroFlag(A);
-        SetNegativeFlag(A);
+    case LDA_ZERO_PAGE_OFFSET_X: {
+        uint8_t address = AddrZeroPageX(cycles);
+        LoadCurrentRegister(address, A);
         break;
     }
     case LDA_ABSOLUTE: {
-        uint16_t targetAddress = FetchWord(cycles);
-        A = Get2Byte(cycles, targetAddress);
-        SetZeroFlag(A);
-        SetNegativeFlag(A);
+        uint16_t address = AddrAbsolute(cycles);
+        LoadCurrentRegister(address,A);
         break;
     }
-    case LDA_ABSOLUTE_X: {
-        uint16_t TAddress = FetchWord(cycles);
-        uint16_t OAdressX = TAddress + X;
-        A = Get2Byte(cycles, OAdressX);
-        if (OAdressX - TAddress >= 0xFF) {
-            cycles--;
-        }
-        SetZeroFlag(A);
-        SetNegativeFlag(A);
+    case LDA_ABSOLUTE_OFFSET_X: {
+        uint16_t address = AddrAbsoluteX(cycles);
+        LoadCurrentRegister(address, A);
         break;
     }
-    case LDA_ABSOLUTE_Y: {
-        uint16_t TAddress = FetchWord(cycles);
-        uint16_t OAdressY = TAddress + Y;
-        A = Get2Byte(cycles, OAdressY);
-        if (OAdressY - TAddress >= 0xFF) {
-            cycles--;
-        }
-        SetZeroFlag(A);
-        SetNegativeFlag(A);
+    case LDA_ABSOLUTE_OFFSET_Y: {
+        uint16_t address = AddrAbsoluteY(cycles);
+        LoadCurrentRegister(address, A);
         break;
     }
-    case LDA_INDIRECT_X: {
-        uint8_t ZPAddress = FetchByte(cycles) + X;
-        cycles--; 
-        uint16_t EFAddress = Get2Byte(cycles, ZPAddress);
-        A = GetByte(cycles, EFAddress);
-        SetZeroFlag(A);
-        SetNegativeFlag(A);
+    case LDA_INDIRECT_OFFSET_X: {
+        uint16_t address = AddrIndirectX(cycles);
+        LoadCurrentRegister(address, A);
         break;
     }
-    case LDA_INDIRECT_Y: {
-        uint8_t ZPAddress = FetchByte(cycles);
-        uint16_t EFAddress = Get2Byte(cycles, ZPAddress);
-        uint16_t OAdressY = EFAddress + Y;
-        cycles--;
-        A = GetByte(cycles, EFAddress);
-        if (OAdressY - EFAddress >= 0xFF) {
-            cycles--;
-        }
-        SetZeroFlag(A);
-        SetNegativeFlag(A);
+    case LDA_INDIRECT_OFFSET_Y: {
+        uint16_t Eaddress = AddrIndirectY(cycles);
+        LoadCurrentRegister(Eaddress, A);
         break;
     }
 
@@ -129,35 +101,166 @@ void CPU::ExecuteInstruction(uint8_t opcode, uint8_t& cycles) {
         break;
     }
 }
+//Sets the register flags by checking the zero and negative states.
+void CPU::LoadRegisterStatus(uint8_t Register)
+{
+  SetZeroFlag(Register);
+  SetNegativeFlag(Register);
+}
+// Returns a 16-bit address from memory page zero
+uint16_t CPU::AddrZeroPage(uint8_t& Cycles)
+{
+    uint8_t address = FetchByte(Cycles);
+    if (address > 0xFF) {
+        throw std::runtime_error("Overflow of the first memory page!");
+    }
+    return address;
+}
+// Returns a 16-bit address from memory page zero with offset X
+uint16_t CPU::AddrZeroPageX(uint8_t& Cycles)
+{
+    uint8_t address = FetchByte(Cycles) + X;
+    if (address > 0xFF) {
+        throw std::runtime_error("Overflow of the first memory page!");
+    }
+    Cycles--;
+    return address;
+}
+// Returns a 16-bit address from memory page zero with offset Y
+uint16_t CPU::AddrZeroPageY(uint8_t& Cycles)
+{
+    uint8_t address = FetchByte(Cycles) + Y;
+    if (address > 0xFF) {
+        throw std::runtime_error("Overflow of the first memory page!");
+    }
+    Cycles--;
+    return address;
+}
+//Returns the absolute address
+uint16_t CPU::AddrAbsolute(uint8_t& Cycles)
+{
+    uint16_t address = FetchWord(Cycles);
+    return address;
+}
+//Returns the absolute address with an X offset added. If the offset crosses a page boundary, loops are decremented.
+uint16_t CPU::AddrAbsoluteX(uint8_t& Cycles)
+{
+    uint16_t Address = FetchWord(Cycles);
+    uint16_t AdressX = Address + X;
+    Cycles = ValidateMemoryPageBoundaries(Address, AdressX) ? Cycles-- : Cycles;
+    return AdressX;
+}
+//Returns the absolute address with an Y offset added. If the offset crosses a page boundary, loops are decremented.
+uint16_t CPU::AddrAbsoluteY(uint8_t& Cycles)
+{
+    uint16_t Address = FetchWord(Cycles);
+    uint16_t AdressX = Address + Y;
+    Cycles = ValidateMemoryPageBoundaries(Address, AdressX) ? Cycles-- : Cycles;
+    return AdressX;
+}
+//Indirect address with added X offset
+uint16_t CPU::AddrIndirectX(uint8_t& Cycles)
+{
+    uint16_t Address = Get2Byte(Cycles, FetchByte(Cycles));
+    uint16_t AdressX = Address + X;
+    Cycles--;
+    return AdressX;
+}
+//Indirect address with added Y offset
+uint16_t CPU::AddrIndirectY(uint8_t& Cycles)
+{
+    uint16_t Address = Get2Byte(Cycles, FetchByte(Cycles));
+    uint16_t AdressY = Address + Y;
+    Cycles = ValidateMemoryPageBoundaries(Address, AdressY) ? Cycles-- : Cycles;
+    Cycles--;
+    return AdressY;
+}
 
 void CPU::SetZeroFlag(uint8_t value) {
     flags.Z = (value == 0);
 }
 
 void CPU::SetNegativeFlag(uint8_t value) {
-    flags.N = (value & 0x80) != 0;  
+    flags.N = (value & 0x80) != 0;
 }
 
+//Reads a byte from RAM at an address.
 uint8_t CPU::GetByte(uint8_t& cycles, uint16_t address) {
-    uint8_t byte = (*_ram)[address];  
+    uint8_t byte = (*_ram)[address];
+    if (CheckValidMemory(byte)) {
+        throw new std::runtime_error("Out of the range of allowed RAM memory");
+    }
     cycles--;
-    return byte;
+    return (*_ram)[address];
 }
 
+//Write a byte from RAM at an address.
 void CPU::SetByte(uint8_t& cycles, uint8_t value, uint16_t address) {
     (*_ram)[address] = value;
     cycles--;
 }
 
+//Reads a 2 byte from RAM at an address.
 uint16_t CPU::Get2Byte(uint8_t& cycles, uint16_t address) {
     uint16_t word = (*_ram)[address];
     word |= ((*_ram)[address + 1] << 8);
+    if (CheckValidMemory(word)) {
+        throw new std::runtime_error("Out of the range of allowed RAM memory");
+    }
     cycles -= 2;
     return word;
 }
 
+//Write a 2 byte from RAM at an address.
 void CPU::Set2Byte(uint8_t& cycles, uint16_t word, uint16_t address) {
     (*_ram)[address] = word & 0xFF;
     (*_ram)[address + 1] = (word >> 8);
     cycles -= 2;
+}
+
+//Reads a 8-bit word from RAM using the program counter (PC)
+uint8_t CPU::FetchByte(uint8_t& cycles) {
+    if (!_ram) {
+        throw std::runtime_error("RAM not connected!");
+    }
+    uint8_t byte = (*_ram)[PC];
+    if (CheckValidMemory(byte)) {
+        throw new std::runtime_error("Out of the range of allowed RAM memory");
+    }
+    PC++;
+    cycles--;
+    return byte;
+}
+
+//Reads a 16-bit word from RAM using the program counter (PC)
+uint16_t CPU::FetchWord(uint8_t& cycles) {
+    if (!_ram) {
+        throw std::runtime_error("RAM not connected!");
+    }
+
+    uint16_t word = (*_ram)[PC];
+    word |= ((*_ram)[PC] << 8);
+    if (CheckValidMemory(word)) {
+        throw new std::runtime_error("Out of the range of allowed RAM memory");
+    }
+    PC += 2;
+    cycles -= 2;
+    return word;
+}
+
+
+bool CPU::ValidateMemoryPageBoundaries(uint16_t& Faddress, uint16_t& Saddress)
+{
+    if (Saddress - Faddress >= 0xFF) {
+        return true;
+    }
+    return false;
+}
+
+bool CPU::CheckValidMemory(uint16_t address)
+{
+    if (address < 0x0000 || address > 0xFFFF) {
+        return true;
+    }
+    return false;
 }

@@ -4,21 +4,26 @@
 RAM::RAM() {
     Init();
 }
-
+// Reads a 16 - bit word from RAM using the program counter(PC)
 void RAM::Init() {
-    memory.resize(MEM_SIZE);
-    std::fill(memory.begin(), memory.end(), 0x00);
+    memory.assign(MEM_SIZE, 0x00);
 }
-//get
+// Returns the memory value at the specified address (for constant objects).
 uint16_t RAM::operator[](uint16_t address) const {
+    if (address >= MEM_SIZE) {
+        throw std::out_of_range("Address is out of bounds.");
+    }
     return memory[address];
 }
 
-//set
+// Returns a reference to the memory value at the specified address (for non-constant objects).
 uint16_t& RAM::operator[](uint16_t address) {
     return memory[address];
 }
-
+//Connects the RAM (RAM) to the CPU (CPU)
 void RAM::ConnectCPU(std::shared_ptr<CPU> cpuPtr) {
-    cpu = std::move(cpuPtr); 
+    if (!cpuPtr) {
+        throw std::invalid_argument("Invalid CPU pointer.");
+    }
+    cpu = std::move(cpuPtr);
 }
