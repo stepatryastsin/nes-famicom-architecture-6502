@@ -87,6 +87,13 @@ private:
    bool ValidateMemoryPageBoundaries(uint16_t& Faddress, uint16_t& Saddress);
 
    bool CheckValidMemory(uint16_t address);
+
+private:
+   void PushStack(uint8_t& Cycles);
+   uint16_t PopStack(uint8_t& Cycles);
+   uint16_t SPTAddress() {
+       return 0x0100 | SP;
+   }
 };
 
 #endif // CPU_H

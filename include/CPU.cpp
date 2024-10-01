@@ -409,3 +409,16 @@ bool CPU::CheckValidMemory(uint16_t address)
     }
     return false;
 }
+
+void CPU::PushStack(uint8_t& Cycles) {
+    Set2Byte(Cycles,PC-1,SPTAddress());
+    SP -= 2;
+}
+
+
+uint16_t CPU::PopStack(uint8_t& Cycles) {
+    uint16_t val = Get2Byte(Cycles, SPTAddress() + 1);
+    Cycles--;
+    SP += 2;
+    return val;
+}
